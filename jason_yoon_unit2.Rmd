@@ -1,0 +1,158 @@
+##Download into R Studio the PlayerBBall.csv dataset. This data set is every NBA basketball player from 1950 to present.  It contains their height, weight, position and the year they played (among other data.) (Position: F-Forward, C-Centers, F-C and C-F – Forward /Centers, G – Guards, F-G – Forward/Guards)  FYI: If you feel that these questions are open ended or at least a little vague, this is on purpose.  Answer the question as you understand it and make any assumptions you need to make to answer the question and record those assumptions. (3-5 hours)
+
+```{r}
+hello <- read.csv("PlayersBBall.csv")
+head(hello)
+```
+
+# Use the PlayerBBall.csv dataset to visually represent (summarize) the number of players in each position. 
+
+```{r}
+summary(hello)
+```
+
+#Use the dataset to visually investigate the distribution of the weight of centers (C) is greater than the distribution of the weight of forwards (F).  
+
+hist(hello$weight, main = "weight of all players", col="blue")
+
+```{r}
+#CENTERS
+centers <- subset(hello, hello$position == "C")
+head(centers)
+summary(centers)
+hist(centers$weight, main = "weight of centers", col="blue")
+```
+```{r}
+#forwards
+forwards <- subset(hello, hello$position == "F")
+head(forwards)
+summary(forwards)
+hist(forwards$weight, main = "weight of forwards", col="green")
+## how can I plot two hist at the same time?
+## what about C-F?
+```
+#Use the dataset to visually investigate if the distribution of the height of centers (C) is greater than the distribution of the height of forwards (F).
+
+```{r}
+
+
+#install.packages(tidyr)
+library(tidyr)
+library(dplyr)
+df <- separate(data = centers, col = height, into = c("ft", "inch"), sep = "\\-")
+ft_numeric <- as.numeric(df$ft)
+head(ft_numeric)
+inch_numeric <- as.numeric(df$inch)
+
+hist(ft_numeric*12+inch_numeric, main = "height of centers (inch)", col="blue")
+```
+```{r}
+dff <- separate(data = forwards, col = height, into = c("ft", "inch"), sep = "\\-")
+ft_numeric <- as.numeric(dff$ft)
+head(ft_numeric)
+inch_numeric <- as.numeric(dff$inch)
+head(inch_numeric)
+
+hist(ft_numeric*12+inch_numeric, main = "height of forwards (inch)", col="green")
+```
+
+##Use the dataset to visually investigate if the distribution of height is different between any of the positions.  
+
+
+#install.packages(dplyr)
+#library(dplyr)
+head(hello$position)
+count(hello,position)
+# c = 502, F = 1290, G= 1574, let's check height of G
+
+```{r}
+guards <- subset(hello, hello$position == "G")
+dfff <- separate(data = guards, col = height, into = c("ft", "inch"), sep = "\\-")
+ft_numeric <- as.numeric(dfff$ft)
+head(ft_numeric)
+inch_numeric <- as.numeric(dfff$inch)
+head(inch_numeric)
+
+hist(ft_numeric*12+inch_numeric, main = "height of guard (inch)", col="red")
+## G<F<C
+```
+
+
+## Use the dataset to investigate how the player’s height is related to the player’s weight. How does height change as the weight changes?  
+
+```{r}
+# function we are setting them manually.
+library(ggplot2)
+hello %>% ggplot(aes(x = weight, y = height)) + 
+geom_point(color = "blue")
+```
+
+
+##Is their any difference in the relationship between height and weight between positions?  Are height and weight related differently for different positions.
+```{r}
+centers %>% ggplot(aes(x = weight, y = height)) + 
+geom_point(color = "blue")
+
+forwards %>% ggplot(aes(x = weight, y = height)) + 
+geom_point(color = "green")
+
+guards %>% ggplot(aes(x = weight, y = height)) + 
+geom_point(color = "red")
+```
+
+
+##A historian would like to investigate the claim that the heights of players have increased over the years.  Analyze this claim graphically / visually. 
+
+```{r}
+hello %>% ggplot(aes(x = year_start, y = height)) + 
+geom_point(color = "blue")
+```
+
+
+
+##Create a 3D plot of height vs. weight vs. year and color code the points by position.  
+```{r}
+library(plotly)
+p <- plot_ly(hello, x = ~height, y = ~weight, z = ~year_start , marker = list(color = ~year_start, colorscale = c('#FFE1A1', '#683531'), showscale = TRUE)) %>%
+   add_markers() %>%
+   layout(scene = list(xaxis = list(title = 'height'),
+                      yaxis = list(title = 'weight'),
+                      zaxis = list(title = 'year_start')))
+p
+```
+
+
+
+##Go to this website and use one of the 50 best plots to visualize some aspect of the data and provide at least one insight.  You will present your work in breakout! http://r-statistics.co/Top50-Ggplot2-Visualizations-MasterList-R-Code.html
+#Animated Bubble chart
+
+```{r}
+library(gapminder)
+library(tidyverse)
+library(gganimate)
+
+g <- ggplot(gapminder, aes(gdpPercap, lifeExp, size = pop, colour = country)) +
+  geom_point(alpha = 0.7, show.legend = FALSE) +
+  scale_colour_manual(values = country_colors) +
+  scale_size(range = c(2, 12)) +
+  scale_x_log10() +
+  facet_wrap(~continent) +
+  # Here comes the gganimate specific bits
+  labs(title = 'Year: {frame_time}', x = 'GDP per capita', y = 'life expectancy') +
+  transition_time(year) +
+  ease_aes('linear')
+
+animate(g, renderer = ffmpeg_renderer())
+
+```
+
+##Separate dataset:  The EducationIncome.csv dataset has incomes of randomly selected Americans and their level of education.  (1-2 hours)
+##Visually test the claim that the distribution of incomes increase (mean or median) as the education level rises. 
+
+
+```{r}
+hello1 <- read.csv("Education_Income.csv")
+head(hello1)
+hello1 %>% ggplot(aes(x = Educ, y = Income2005)) + 
+geom_point(color = "blue")
+```
