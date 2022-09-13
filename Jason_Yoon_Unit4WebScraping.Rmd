@@ -1,0 +1,148 @@
+#Live Session 4 For Live Session Web Scraping Code
+```{r}
+library(XML) #xml_Parse
+library(dplyr)
+library(tidyr)
+library(stringi)
+library(rvest) #html_table, html_node
+library(ggplot2)
+library(RCurl) #getURL
+
+#Basics of Scraping XML
+
+# Method 1: XML
+
+data <-getURL("https://www.w3schools.com/xml/simple.xml")
+doc <- xmlParse(data)
+names <- xpathSApply(doc,"//name",xmlValue)
+price <- xpathSApply(doc,"//price",xmlValue)
+description <- xpathSApply(doc,"//description",xmlValue)
+bfasts = data.frame(names,price,description)
+bfasts
+bfasts$description
+length(grep("covered",bfasts$description))
+grepl("covered",bfasts$description)
+sum(grepl("covered",bfasts$description))
+which(grepl("covered",bfasts$description))
+```
+
+```{r}
+# Method 2: rvest
+
+hp<-read_html("https://www.w3schools.com/xml/simple.xml")
+hp_nameR <- html_nodes(hp,"name")
+hp_priceR <- html_nodes(hp,"price")
+hp_descR <- html_nodes(hp,"description")
+hp_nameR
+hp_name = stri_sub(hp_nameR,7,-8)
+hp_name
+hp_price = stri_sub(hp_priceR,8,-9)
+hp_price
+hp_desc = stri_sub(hp_descR,14,-15)
+hp_desc
+bfast = data.frame(hp_name,hp_price,hp_desc)
+grep("toast", bfast$hp_desc)
+grepl("toast",bfast$hp_desc)
+
+sum(grepl("toast",bfast$hp_desc))
+```
+
+```{r}
+#Part 1: Restaurant Data from Baltimore!
+
+# 1-1. Scrape the XML page for name, zipcode and city council district.  (Use either the XML or rvest package.)
+library(XML) #xml_Parse
+library(dplyr)
+library(tidyr)
+library(stringi)
+library(rvest) #html_table, html_node
+library(ggplot2)
+library(RCurl) #getURL
+fileURL<-"https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2Frestaurants.xml"
+
+fileURL2 <- sub('https', 'http', fileURL)
+doc <- xmlTreeParse(fileURL2, useInternal = TRUE)
+```
+
+```{r}
+#1-2. Make a dataframe with just those columns.
+names <- xpathSApply(doc,"//name",xmlValue)
+zipcode <- xpathSApply(doc,"//zipcode",xmlValue)
+councildistrict <- xpathSApply(doc,"//councildistrict",xmlValue)
+bfasts = data.frame(names,zipcode,councildistrict)
+bfasts
+```
+
+```{r}
+#1-3. Are there any Sushi restaurants in Baltimore? (Where the dataset is from.)
+length(grep("SUSHI",bfasts$names))
+length(grep("JAPANESE",bfasts$names))
+```
+
+```{r}
+#1-4. If so, can you estimate how many?
+print('9~10')
+```
+```{r}
+##1-5. Filter the dataframe for just downtown restaurants (Council District 11). 
+df <- filter(bfasts,councildistrict == "11")
+df
+```
+
+```{r}
+##1-6. Are there any Sushi restaurants downtown?  # research the “grep” function
+length(grep("SUSHI",df$names))
+length(grep("JAPANESE",df$names))
+
+```
+```{r}
+##1-7. If so, estimate how many “Sushi” restaurants are in Downtown
+print('1')
+```
+
+```{r}
+##1.8.Make a barplot of the estimated number of restaurants (Sushi or otherwise) in each council.
+hello1 <- bfasts %>% group_by(councildistrict) %>% summarize(, count = n())
+hello1
+barplot(hello1$count, names.arg = hello1$councildistrict)
+```
+
+#####For Live Session Part 2: Freestyle!
+
+##Install and load one of the packages given in the list for downloading APIs (or another API you have found and are interested in).
+#twitteR
+
+#install.packages("twitteR")
+library("openssl")
+library("httpuv")
+library("twitteR")
+
+api_key = "dEKGrIKRdziEBWCM1nqV9hZNT"
+api_secret = "fnMtMIm5ucNEXELUI1ZjzgHFytMranfnKXql4iM2emf9I6TgB3"
+access_token = "90782651-ndwTyAHmde9khlMPibuv4w4FLE2no0nlI0wAMpAg2"
+access_token_secret = "iwfSbQb1eGfrLJbw7tattBQrnKn0gmUasfJwuD4RRGMqR"
+
+setup_twitter_oauth(api_key, api_secret, access_token, access_token_secret)
+origop <- options("httr_oauth_cache")
+options(httr_oauth_cache = TRUE)
+##error code
+print('Error in check_twitter_oauth() : OAuth authentication error:
+This most likely means that you have incorrectly called setup_twitter_oauth()')
+tweets = searchTwitter("$appl", n = 10, lang = "en")
+
+##rtweet
+library("rtweet")
+## name assigned to created app
+appname <- "rtweet_token"
+## api key (example below is not a real key)
+key <- "XYznzPFOFZR2a39FwWKN1Jp41"
+## api secret (example below is not a real key)
+secret <- "CtkGEWmSevZqJuKl6HHrBxbCybxI1xGLqrD5ynPd9jG0SoHZbD"
+twitter_token <- create_token(
+    app = appname,
+    consumer_key = key,
+    consumer_secret = secret)
+## error code
+print('Warning: `create_token()` was deprecated in rtweet 1.0.0.
+See vignette('auth') for detailsError in httr::init_oauth1.0(endpoint, app, permission = permission, is_interactive = is_interactive,  : 
+  Unauthorized (HTTP 401).')
