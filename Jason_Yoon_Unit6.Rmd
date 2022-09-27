@@ -1,0 +1,131 @@
+###Download the training set: Connect to the opendatasoft website and download the random sample of 891 Titanic Passengers.  This is the training set.   The data come in JSON form format and you can use this URL to access the data:
+#https://public.opendatasoft.com/api/records/1.0/search/?dataset=titanic-passengers&rows=2000&facet=survived&facet=pclass&facet=sex&facet=age&facet=embarked
+#Hint: This is not trivial. I recommend that you use the jsonlite package (fromJSON()) and RCurl package (getURL()) to access the data. (We covered this in Unit 4).  
+#Try your best to access the data using the URL.  You may also find the data (titanic_train.csv) on github.  We will go over this data ingestion in live session. 
+
+```{r}
+library(XML) #xml_Parse
+library(dplyr)
+library(tidyr)
+library(stringi)
+library(rvest) #html_table, html_node
+library(ggplot2)
+library(RCurl) #getURL
+library(class)
+library(caret)
+library(e1071)
+
+#Basics of Scraping XML
+
+# Method 1: XML
+
+data <-getURL("https://public.opendatasoft.com/api/records/1.0/search/?dataset=titanic-passengers&rows=2000&facet=survived&facet=pclass&facet=sex&facet=age&facet=embarked")
+#{
+#  "error": "Unknown dataset: titanic-passengers"
+#}
+hello1 = read.csv("titanic_train.csv")
+head(hello1)
+```
+##Use KNN to classify those who survived and died based on Age and class.
+```{r}
+hello1 %>% ggplot(aes(x = Age, y = Pclass, color = Survived)) + geom_point()
+dfTest = data.frame(Age = 40, Pclass = 2)
+knn(hello1[,1:2], dfTest, hello1$Survived, k = 5, prob = TRUE)
+```
+##Use your age and predict your survival based on each of the ticket classes.  
+```{r}
+dfTest = data.frame(Age = 30, Pclass = 2)
+knn(hello1[,1:2], dfTest, hello1$Survived, k = 15, prob = TRUE)
+```
+###Use your model to classify the 418 randomly selected passengers in the test set (titanic_test.csv) on github
+
+```{r}
+hello2 = read.csv("titanic_test.csv")
+head(hello2)
+dfTest2 = data.frame(Age = 30, Pclass = 2)
+classifications = knn(hello1[,c(1,2)],hello2[,c(1,2)],hello1$Survived, prob = TRUE, k = 3)
+```
+##Create a confusion matrix and calculate the accuracy, misclassification rate, sensitivity and specificity.   Be prepared to explain these statistics. (It is ok if you have questions here… we will answer them in live session … just do your best in the time allotted.)  
+
+```{r}
+#confusion matrix
+classifications = knn(hello1[,c(1,2)],hello2[,c(1,2)],hello1$Survived, prob = TRUE, k = 5)
+hello3=table(hello1$Survived[1:418],classifications)
+hello3
+confusionMatrix(table(hello1$Survived[1:418],classifications))
+```
+###For the full (multinomial) IRIS data (the iris dataset in R), do a 70-30 train/test cross validation with k =1 - 90 and use sepal length and width as predictors.  Make a plot of k (xaxis) versus accuracy.  Use this plot to tune the hyperparameter k.  What do you feel is the best value of k?  
+
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+
+#For Live Session
+```{r}
+#Use a 70 - 30 train/test split to use cross validation to
+#tune the hyperparameter k
+
+
+# Loop for many k and the average of many training / test partition
+
+set.seed(1)
+iterations = 500
+numks = 90
+splitPerc = .70
+
+masterAcc = matrix(nrow = iterations, ncol = numks)
+
+for(j in 1:iterations)
+{
+  trainIndices = sample(1:dim(iris)[1],round(splitPerc * dim(iris)[1]))
+  train = iris[trainIndices,]
+  test = iris[-trainIndices,]
+  for(i in 1:numks)
+  {
+    classifications = knn(train[,c(1,3)],test[,c(1,3)],train$Species, prob = TRUE, k = i)
+    table(classifications,test$Species)
+    CM = confusionMatrix(table(classifications,test$Species))
+    masterAcc[j,i] = CM$overall[1]
+  }
+  
+}
+
+MeanAcc = colMeans(masterAcc)
+
+plot(seq(1,numks,1),MeanAcc, type = "l")
+
+which.max(MeanAcc)
+max(MeanAcc)
+
+
+
+# FOR LIVE SESSION LEAVE 1 OUT KNN IRIS
+
+set.seed(1)
+iterations = 500
+numks = 90
+
+masterAcc = matrix(nrow = iterations, ncol = numks)
+
+for(j in 1:iterations)
+{
+  
+  for(i in 1:numks)
+  {
+    CM = confusionMatrix(table(iris[,5],knn.cv(iris[,c(1,2)],iris[,5],k = i)))
+    masterAcc[j,i] = CM$overall[1]
+    
+  }
+  
+}
+
+MeanAcc = colMeans(masterAcc)
+
+plot(seq(1,numks,1),MeanAcc, type = "l")
+
+which.max(MeanAcc)
+max(MeanAcc)
+```
+
