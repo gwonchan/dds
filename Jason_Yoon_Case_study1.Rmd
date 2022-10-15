@@ -16,7 +16,7 @@ head(hello_beers)
 hello1=table(hello_breweries$State)
 hello1
 dim(hello1)
-plot(hello1,main = "Breweries by state",xlab = "States", ylab = "# of Breweries",ylim=c(0,60),cex.axis = 0.5)
+plot(hello1,main = "Breweries by state",xlab = "States", ylab = "# of Breweries",ylim=c(0,60),cex.axis = 1, las=2)
 ```
 ##2.	Merge beer data with the breweries data. Print the first 6 observations and the last six observations to check the merged file.  (RMD only, this does not need to be included in the presentation or the deck.)
 
@@ -47,11 +47,11 @@ gg_miss_var(hello_merge)
 library(dplyr)
 hello1 <- hello_merge %>% group_by(State) %>% summarize(medianABV = median(ABV,na.rm = TRUE), count = n()) %>% arrange(medianABV)
 print(hello1)
-barplot(hello1$medianABV, names.arg = hello1$State)
+barplot(hello1$medianABV, names.arg = hello1$State, las=2)
 
 hello2 <- hello_merge %>% group_by(State) %>% summarize(medianIBU = median(IBU,na.rm = TRUE), count = n()) %>% arrange(medianIBU)
 print(hello2)
-barplot(hello2$medianIBU, names.arg = hello2$State)
+barplot(hello2$medianIBU, names.arg = hello2$State, las=2)
 ```
 
 ##5.	Which state has the maximum alcoholic (ABV) beer? Which state has the most bitter (IBU) beer?
@@ -71,21 +71,82 @@ hist(hello_merge$ABV,main = "Histogram of ABV",xlab = "ABV", ylab = "Count")
 library(ggplot2)
 hello_merge %>% ggplot(aes(x = ABV, y = IBU)) + 
 geom_point(color = "blue")
-scatter.smooth(x=hello_merge$ABV, y=hello_merge$IBU, main = "Mild positive linear relationship",xlab = "ABV", ylab = "IBU")
+scatter.smooth(x=hello_merge$ABV, y=hello_merge$IBU, main = "Mild positive linear relationship",xlab = "ABV", ylab = "IBU", col="blue")
 print("This data shows mild positive linear relationship between bitterness and alcoholic content(3rd degree polynomial). Most of Beer bitterness comes from hops. ")
 ```
 8.	Budweiser would also like to investigate the difference with respect to IBU and ABV between IPAs (India Pale Ales) and other types of Ale (any beer with “Ale” in its name other than IPA).  You decide to use KNN classification to investigate this relationship.  Provide statistical evidence one way or the other. You can of course assume your audience is comfortable with percentages … KNN is very easy to understand conceptually. 
 In addition, while you have decided to use KNN to investigate this relationship (KNN is required) you may also feel free to supplement your response to this question with any other methods or techniques you have learned.  Creativity and alternative solutions are always encouraged.  
 ```{r}
-#classfy IPAs or not using IBU and ABV value.
-#make new column as IPAs and the value will be 1 or 0. When the Style has "IPA", the value will be 1. nor 0.
+library(XML) #xml_Parse
+library(dplyr)
+library(tidyr)
+library(stringi)
+library(rvest) #html_table, html_node
+library(ggplot2)
+library(RCurl) #getURL
+library(class)
+library(caret)
+library(e1071)
+#install.packages("Hmisc")
+library(Hmisc)
+#install.packages("stringr")     # Install & load stringr package
+library("stringr")
+library(naniar)
+
+#classfy IPAs or not, using IBU and ABV values.
+#make new column as IPAs and the values will be 1 or 0. When the Style has "IPA", the value will be 1. nor 0.
 hello_IPA <- 1*str_detect(hello_merge$Style, "IPA")
 hello_IPA
 hello_merge$IPAs <- hello_IPA
 head(hello_merge)
-#70/30 training/
+#impute missing values with median
+hello_merge$IBU <- impute(hello_merge$IBU, median)
+hello_merge$ABV <- impute(hello_merge$ABV, median)
+hello_merge = hello_merge[complete.cases(hello_merge),]
+gg_miss_var(hello_merge)
+#scaling
+hello_merge$IBU = scale(hello_merge$IBU)
+hello_merge$ABV = scale(hello_merge$IBU)
 
+
+#could not find function "impute.knn"
+#install.packages("imputeTS")
+#library(imputeTS)
+#impute.knn(hello_merge ,k = 10, rowmax = 0.5, colmax = 0.8, maxp = 1500, rng.seed=362436069)
+
+#70/30 training/
+# Loop for many k and the average of many training / test partition
+
+set.seed(1)
+iterations = 500
+numks = 90
+splitPerc = .70
+
+masterAcc = matrix(nrow = iterations, ncol = numks)
+
+
+for(j in 1:iterations)
+{
+  trainIndices = sample(1:dim(hello_merge)[1],round(splitPerc * dim(hello_merge)[1]))
+  train = hello_merge[trainIndices,]
+  test = hello_merge[-trainIndices,]
+  for(i in 1:numks)
+  {
+    classifications = knn(train[,c(7,8)],test[,c(7,8)],train$IPAs, prob = TRUE, k = i)
+    table(classifications,test$IPAs)
+    CM = confusionMatrix(table(classifications,test$IPAs))
+    masterAcc[j,i] = CM$overall[1]
+  }
+  
+}
+
+MeanAcc = colMeans(masterAcc)
+
+plot(seq(1,numks,1),MeanAcc, type = "l")
+
+which.max(MeanAcc)
+max(MeanAcc)
 ```
 9.	Knock their socks off!  Find one other useful inference from the data that you feel Budweiser may be able to find value in.  You must convince them why it is important and back up your conviction with appropriate statistical evidence. 
 
-
+#market share  competitor breweries
