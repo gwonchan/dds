@@ -99,15 +99,36 @@ hello_IPA <- 1*str_detect(hello_merge$Style, "IPA")
 hello_IPA
 hello_merge$IPAs <- hello_IPA
 head(hello_merge)
-#impute missing values with median
-hello_merge$IBU <- impute(hello_merge$IBU, median)
-hello_merge$ABV <- impute(hello_merge$ABV, median)
-hello_merge = hello_merge[complete.cases(hello_merge),]
-gg_miss_var(hello_merge)
-#scaling
-hello_merge$IBU = scale(hello_merge$IBU)
-hello_merge$ABV = scale(hello_merge$IBU)
 
+hello_merge %>% ggplot(aes(x = ABV, y = IBU, color=IPAs > 0)) + 
+geom_point() +
+stat_ellipse()
+
+#median IPA
+hello_filter1=filter(hello_merge, IPAs == "1")
+median(hello_filter1$ABV[which(!is.na(hello_filter1$ABV))])
+median(hello_filter1$IBU[which(!is.na(hello_filter1$IBU))])
+
+#median no IPA
+hello_filter0=filter(hello_merge, IPAs == "0")
+median(hello_filter0$ABV[which(!is.na(hello_filter0$ABV))])
+median(hello_filter0$IBU[which(!is.na(hello_filter0$IBU))])
+
+
+#impute missing values with median
+hello_impute=hello_merge
+hello_impute$IBU <- impute(hello_impute$IBU, median)
+hello_impute$ABV <- impute(hello_impute$ABV, median)
+hello_impute = hello_impute[complete.cases(hello_impute),]
+gg_miss_var(hello_impute)
+
+#scaling
+hello_scale = hello_impute
+hello_scale$IBU = scale(hello_impute$IBU)
+hello_scale$ABV = scale(hello_impute$ABV)
+hello_scale %>% ggplot(aes(x = ABV, y = IBU, color=IPAs > 0)) + 
+geom_point() +
+stat_ellipse()
 
 #could not find function "impute.knn"
 #install.packages("imputeTS")
@@ -118,7 +139,7 @@ hello_merge$ABV = scale(hello_merge$IBU)
 # Loop for many k and the average of many training / test partition
 
 set.seed(1)
-iterations = 500
+iterations = 100
 numks = 90
 splitPerc = .70
 
@@ -127,9 +148,9 @@ masterAcc = matrix(nrow = iterations, ncol = numks)
 
 for(j in 1:iterations)
 {
-  trainIndices = sample(1:dim(hello_merge)[1],round(splitPerc * dim(hello_merge)[1]))
-  train = hello_merge[trainIndices,]
-  test = hello_merge[-trainIndices,]
+  trainIndices = sample(1:dim(hello_scale)[1],round(splitPerc * dim(hello_scale)[1]))
+  train = hello_scale[trainIndices,]
+  test = hello_scale[-trainIndices,]
   for(i in 1:numks)
   {
     classifications = knn(train[,c(7,8)],test[,c(7,8)],train$IPAs, prob = TRUE, k = i)
@@ -146,6 +167,14 @@ plot(seq(1,numks,1),MeanAcc, type = "l")
 
 which.max(MeanAcc)
 max(MeanAcc)
+
+## Accuracy was used to select the optimal model using the largest value.
+## The final value used for the model was k = 20.
+classifications = knn(train[,c(7,8)],test[,c(7,8)],train$IPAs, prob = TRUE, k = 9)
+table(classifications,test$IPAs)
+CM = confusionMatrix(table(classifications,test$IPAs))
+
+
 ```
 9.	Knock their socks off!  Find one other useful inference from the data that you feel Budweiser may be able to find value in.  You must convince them why it is important and back up your conviction with appropriate statistical evidence. 
 
