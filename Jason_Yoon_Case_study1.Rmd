@@ -96,24 +96,31 @@ library(naniar)
 
 #classfy IPAs or not, using IBU and ABV values.
 #make new column as IPAs and the values will be 1 or 0. When the Style has "IPA", the value will be 1. nor 0.
-hello_IPA <- 1*str_detect(hello_merge$Style, "IPA")
-hello_IPA
-hello_merge$IPAs <- hello_IPA
+#hello_IPA <- 1*str_detect(hello_merge$Style, "IPA")
+hello_IPAs = ifelse(str_detect(hello_merge$Style,"IPA")==TRUE,"IPA",ifelse(str_detect(hello_merge$Style,"Ale")==TRUE,"ALE","Other"))
+hello_IPAs
+hello_merge$Beer_type <- hello_IPAs
 head(hello_merge)
 
-hello_merge %>% ggplot(aes(x = ABV, y = IBU, color=IPAs > 0)) + 
+
+hello_merge %>% ggplot(aes(x = ABV, y = IBU, color=Beer_type)) + 
 geom_point() +
 stat_ellipse()
 
 #median IPA
-hello_filter1=filter(hello_merge, IPAs == "1")
+hello_filter1=filter(hello_merge, Beer_type == "IPA")
 median(hello_filter1$ABV[which(!is.na(hello_filter1$ABV))])
 median(hello_filter1$IBU[which(!is.na(hello_filter1$IBU))])
 
+#median Ale
+hello_filter2=filter(hello_merge, Beer_type == "ALE")
+median(hello_filter2$ABV[which(!is.na(hello_filter2$ABV))])
+median(hello_filter2$IBU[which(!is.na(hello_filter2$IBU))])
+
 #median no IPA
-hello_filter0=filter(hello_merge, IPAs == "0")
-median(hello_filter0$ABV[which(!is.na(hello_filter0$ABV))])
-median(hello_filter0$IBU[which(!is.na(hello_filter0$IBU))])
+hello_filter3=filter(hello_merge, Beer_type == "Other")
+median(hello_filter3$ABV[which(!is.na(hello_filter3$ABV))])
+median(hello_filter3$IBU[which(!is.na(hello_filter3$IBU))])
 
 
 #impute missing values with median
@@ -127,21 +134,16 @@ gg_miss_var(hello_impute)
 hello_scale = hello_impute
 hello_scale$IBU = scale(hello_impute$IBU)
 hello_scale$ABV = scale(hello_impute$ABV)
-hello_scale %>% ggplot(aes(x = ABV, y = IBU, color=IPAs > 0)) + 
+hello_scale %>% ggplot(aes(x = ABV, y = IBU, color=Beer_type)) + 
 geom_point() +
 stat_ellipse()
-
-#could not find function "impute.knn"
-#install.packages("imputeTS")
-#library(imputeTS)
-#impute.knn(hello_merge ,k = 10, rowmax = 0.5, colmax = 0.8, maxp = 1500, rng.seed=362436069)
 ```
 
 ```{r}
 #70/30 training/
 # Loop for many k and the average of many training / test partition
 
-set.seed(1)
+set.seed(100)
 iterations = 10
 numks = 20
 splitPerc = .70
@@ -156,9 +158,9 @@ for(j in 1:iterations)
   test = hello_scale[-trainIndices,]
   for(i in 1:numks)
   {
-    classifications = knn(train[,c(7,8)],test[,c(7,8)],train$IPAs, prob = TRUE, k = i)
-    table(classifications,test$IPAs)
-    CM = confusionMatrix(table(classifications,test$IPAs))
+    classifications = knn(train[,c(7,8)],test[,c(7,8)],train$Beer_type, prob = TRUE, k = i)
+    table(classifications,test$Beer_type)
+    CM = confusionMatrix(table(classifications,test$Beer_type))
     masterAcc[j,i] = CM$overall[1]
   }
   
@@ -175,9 +177,10 @@ max(MeanAcc)
 ```{r}
 ## Accuracy was used to select the optimal model using the largest value.
 ## The final value used for the model was k = 20.
-classifications = knn(train[,c(7,8)],test[,c(7,8)],train$IPAs, prob = TRUE, k = 5)
-table(classifications,test$IPAs)
-CM = confusionMatrix(table(classifications,test$IPAs))
+classifications = knn(train[,c(7,8)],test[,c(7,8)],train$Beer_type, prob = TRUE, k = 5)
+table(classifications,test$Beer_type)
+CM = confusionMatrix(table(classifications,test$Beer_type))
+CM
 ```
 ```{r}
 #decision boundary
@@ -198,64 +201,127 @@ ggplot(dff)+geom_point(aes(x = var1, y = var2, col=var3))+
 geom_contour(aes(x = var1, y = var2, z = var3))
 ```
 
-matt = filter(mat, mat[,3] == "1")
+```{r}
+#input
+biterness = 100
+alchol = 0.089
 
-px11 <- px1[1:10]
-px22 <- px2[1:10]
+#scale
+scaled_center_biterness = 39.49668
+scaled_scale_biterness = 20.17576
+scaled_center_alc = 0.05967635
+scaled_scale_alc = 0.01337969
 
+y=(biterness-scaled_center_biterness)/scaled_scale_biterness
+x=(alchol-scaled_center_alc)/scaled_scale_alc
+test1= c(x,y)
+knn(train[,c(7,8)],test1,train$Beer_type, prob = TRUE, k = 5)
 
-pgrid1 <- expand.grid(px11=px11, px22=px22)
-pgrid1$prob <- prob1[1:10]
-matrix_val1 <- matrix(pgrid1$prob, 
-                     length(px11), 
-                     length(px22))
-contour(px11, px22, matrix_val1, levels=1, labels="", xlab="", ylab="", main=
-          "Some Picture", lwd=2, axes=FALSE)
-          
-library(plotly)       
-fig1 <- plot_ly(
-px1,px2,matrix_val1,type = "contour")
-          
-          
-          
-library(plotly)
-fig <- plot_ly(
-  x = c(-9, -6, -5, -3, -1), 
-  y = c(0, 1, 4, 5, 7), 
-  z = matrix(c(10, 10.625, 12.5, 15.625, 20, 5.625, 6.25, 8.125, 11.25, 15.625, 2.5, 3.125, 5, 8.125, 12.5, 0.625, 1.25, 3.125,
-        6.25, 10.625, 0, 0.625, 2.5, 5.625, 10), nrow = 5, ncol = 5), 
-  type = "contour" 
-)
-
-fig
-
-#plot when prob1 = 1
-
-prob15 <- as.matrix(prob1,length(px1), length(px2))
-par(mar=rep(2,4))
-contour(px1, px2, prob15, levels=0.5, labels="", xlab="", ylab="", main=
-        "15-nearest neighbour", axes=FALSE)
 ```
-##example
 
-x1 <- 1:200
-x2 <- 50:250
 
-cgrid <- expand.grid(x1=x1, x2=x2)
-# our "prediction" colours the bottom left quadrant
-cgrid$prob <- 1
-cgrid[cgrid$x1 < 100 & cgrid$x2 < 170, c("prob")] <- 0
+library(tidyverse)
+library(caret)
+library(e1071)
+library(class)
 
-matrix_val <- matrix(cgrid$prob, 
-                     length(x1), 
-                     length(x2))
+hello_breweries = read.csv("Breweries.csv")
+hello_beers = read.csv("Beers.csv")
+merged = merge(hello_breweries,hello_beers,by.x = "Brew_ID", by.y = "Brewery_id")
+nrow(merged)
+names(merged)
+merged <- merged %>% filter(!is.na(ABV) & !is.na(IBU))
+merged$Style
 
-contour(x1, x2, matrix_val, levels=0.5, labels="", xlab="", ylab="", main=
-          "Some Picture", lwd=2, axes=FALSE)
-gd <- expand.grid(x=x1, y=x2)
-points(gd, pch=".", cex=1.2, col=ifelse(prob==1, "coral", "cornflowerblue"))
-box()
+# Creating IPA dataset
+#IPA1 <- which(str_detect(merged$Style, 'India Pale Ale'))
+IPA2 <- which(str_detect(merged$Style, 'IPA'))
+#IPA1 %in% IPA2, IPA2 has everything IPA1 has
+length(IPA2)
+#nrow(merged[c(which(str_detect(merged$Style, 'India Pale Ale')), which(str_detect(merged$Style, 'IPA'))),]) #Got IPA
+IPA_beers <- merged[IPA2,]
+nrow(IPA_beers)
+head(IPA_beers)
 
+# Creating Ale dataset
+sum(str_detect(merged$Style, 'Ale'))
+#so should have 552 since 559 have Ale and only 7 had India Pale Ale
+sum(which(str_detect(merged$Style, 'Ale')) %in% IPA2)
+which(which(str_detect(merged$Style, 'Ale')) %in% IPA2)
+# there were 7 overlaps
+Ale_beers <- merged[which(str_detect(merged$Style, 'Ale')),]
+Ale_beers <- Ale_beers[-which(which(str_detect(merged$Style, 'Ale')) %in% IPA2),]
+nrow(Ale_beers)
+
+
+# extracting row numbers and only selecting those rows
+# then changing names to simply Ale or IPA
+as.integer(rownames(Ale_beers))
+as.integer(rownames(IPA_beers))
+IPA_and_Ale <- merged[c(as.integer(rownames(Ale_beers)), as.integer(rownames(IPA_beers))),]
+IPA_and_Ale$Style <- ifelse(IPA_and_Ale$Style %in% Ale_beers$Style, 'Ale', 'IPA')
+nrow(IPA_and_Ale) # 944 rows
+
+# time for classification
+set.seed(5)
+trainIndices_IPA_and_Ale = sample(seq(1:length(IPA_and_Ale$Style)),round(.7*length(IPA_and_Ale$Style)))
+length(trainIndices_IPA_and_Ale)
+train_IPA_and_Ale = IPA_and_Ale[trainIndices_IPA_and_Ale,]
+test_IPA_and_Ale = IPA_and_Ale[-trainIndices_IPA_and_Ale,]
+nrow(train_IPA_and_Ale) # 661 in train set
+nrow(test_IPA_and_Ale) # 283 in test set
+names(train_IPA_and_Ale) # ABV is 7th column, IBu 8, Style 9
+
+
+# Find best working KNN
+iterations = 10
+numks = 30
+
+masterAcc = matrix(nrow = iterations, ncol = numks)
+masterSens = matrix(nrow = iterations, ncol = numks)
+masterSpec = matrix(nrow = iterations, ncol = numks)
+
+
+# realized I need to standardize my variables
+summary(IPA_and_Ale$IBU)
+summary(IPA_and_Ale$ABV)
+IPA_and_Ale$ABV <- scale(IPA_and_Ale$ABV)
+IPA_and_Ale$IBU <- scale(IPA_and_Ale$IBU)
+str(IPA_and_Ale)
+IPA_and_Ale$IBU <- as.numeric(IPA_and_Ale$IBU)
+IPA_and_Ale$ABV <- as.numeric(IPA_and_Ale$ABV)
+#knn
+
+set.seed(2)
+for(j in 1:iterations)
+{
+  trainIndices_IPA_and_Ale = sample(seq(1:length(IPA_and_Ale$Style)),round(.7*length(IPA_and_Ale$Style)))
+  train_IPA_and_Ale = IPA_and_Ale[trainIndices_IPA_and_Ale,]
+  test_IPA_and_Ale = IPA_and_Ale[-trainIndices_IPA_and_Ale,]
+
+  for(i in 1:numks)
+  {
+    classifications = knn(train_IPA_and_Ale[,c(7,8)],test_IPA_and_Ale[,c(7,8)], train_IPA_and_Ale$Style,k = i)
+    CM = confusionMatrix(table(classifications,test_IPA_and_Ale$Style))
+    masterAcc[j,i] = CM$overall[1]
+    masterSens[j,i] = CM$byClass[1]
+    masterSpec[j,i] = CM$byClass[2]
+  }
+}
+
+MeanAcc = colMeans(masterAcc)
+MeanSens = colMeans(masterSens)
+MeanSpec = colMeans(masterSpec)
+MeanAcc
+MeanSens
+MeanSpec
+plot(seq(1,numks,1),MeanAcc, type = "l")
+which.max(MeanAcc)
+unique(merged$Style)
+#KNN
+classifications = knn(trainTitanic[,c(3,6)],trainTitanic[,c(3,6)],as.factor(trainTitanic$Survived), prob = TRUE, k = 3)
+table(as.factor(trainTitanic$Survived),classifications)
+CM_KNN = confusionMatrix(table(as.factor(trainTitanic$Survived),classifications))
 ##9.	Knock their socks off!  Find one other useful inference from the data that you feel Budweiser may be able to find value in.  You must convince them why it is important and back up your conviction with appropriate statistical evidence. 
 ```{r}
 ##market share, beers by breweries
@@ -263,6 +329,11 @@ freq_table=table(hello_merge$Name.x)
 plot(freq_table,main = "Breweries by competitors",xlab = "Names", ylab = "# of Breweries",ylim=c(0,50),cex.axis = 1, las=2)
 #top three
 hello_market <- hello_merge %>% group_by(Name.x)%>%tally(sort = TRUE)
-hello_market
+#add state on column
+hello_market <- as.data.frame(hello_market)
+df1 = Breweries %>% select(Name,State)
+df2 = merge(hello_market,df1,by.x = "Name.x",by.y = "Name")%>% arrange(desc(n))
+#which is the best state to sell IPA?
+#what is the best, optimized ABV and IBU in Texas market?
 
 ```
