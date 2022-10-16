@@ -24,11 +24,11 @@ plot(hello1,main = "Breweries by state",xlab = "States", ylab = "# of Breweries"
 hello_merge = merge(hello_breweries,hello_beers,by.x = "Brew_ID", by.y = "Brewery_id")
 dim(hello_merge)
 head(hello_merge)
-filter(hello_breweries, Brew_ID == "1")
-filter(hello_beers, Beer_ID == "2689")
+filter(hello_breweries, "Brew_ID" == "1")
+filter(hello_beers, "Beer_ID" == "2689")
 tail(hello_merge)
-filter(hello_breweries, Brew_ID == "558")
-filter(hello_beers, Beer_ID == "30")
+filter(hello_breweries, "Brew_ID" == "558")
+filter(hello_beers, "Beer_ID" == "30")
 
 ```
 ##3.	Address the missing values in each column.
@@ -45,6 +45,7 @@ gg_miss_var(hello_merge)
 ##4.	Compute the median alcohol content and international bitterness unit for each state. Plot a bar chart to compare.
 ```{r}
 library(dplyr)
+dplyr::summarize
 hello1 <- hello_merge %>% group_by(State) %>% summarize(medianABV = median(ABV,na.rm = TRUE), count = n()) %>% arrange(medianABV)
 print(hello1)
 barplot(hello1$medianABV, names.arg = hello1$State, las=2)
@@ -116,7 +117,7 @@ median(hello_filter0$IBU[which(!is.na(hello_filter0$IBU))])
 
 
 #impute missing values with median
-hello_impute=hello_merge
+hello_impute <- hello_merge
 hello_impute$IBU <- impute(hello_impute$IBU, median)
 hello_impute$ABV <- impute(hello_impute$ABV, median)
 hello_impute = hello_impute[complete.cases(hello_impute),]
@@ -134,13 +135,15 @@ stat_ellipse()
 #install.packages("imputeTS")
 #library(imputeTS)
 #impute.knn(hello_merge ,k = 10, rowmax = 0.5, colmax = 0.8, maxp = 1500, rng.seed=362436069)
+```
 
+```{r}
 #70/30 training/
 # Loop for many k and the average of many training / test partition
 
 set.seed(1)
-iterations = 100
-numks = 90
+iterations = 10
+numks = 20
 splitPerc = .70
 
 masterAcc = matrix(nrow = iterations, ncol = numks)
@@ -167,15 +170,99 @@ plot(seq(1,numks,1),MeanAcc, type = "l")
 
 which.max(MeanAcc)
 max(MeanAcc)
+```
 
+```{r}
 ## Accuracy was used to select the optimal model using the largest value.
 ## The final value used for the model was k = 20.
-classifications = knn(train[,c(7,8)],test[,c(7,8)],train$IPAs, prob = TRUE, k = 9)
+classifications = knn(train[,c(7,8)],test[,c(7,8)],train$IPAs, prob = TRUE, k = 5)
 table(classifications,test$IPAs)
 CM = confusionMatrix(table(classifications,test$IPAs))
+```
+```{r}
+#decision boundary
+prob1 <- attr(classifications, "prob")
+px1 <- test$ABV
+px2 <- test$IBU
 
+
+mat = matrix(, nrow = 723, ncol = 3)
+mat[,1] <- px1
+mat[,2] <- px2
+mat[,3] <- classifications
+
+dff <- data.frame(mat)
+colnames(dff) <- c('var1', 'var2', 'var3')
+
+ggplot(dff)+geom_point(aes(x = var1, y = var2, col=var3))+
+geom_contour(aes(x = var1, y = var2, z = var3))
+```
+
+matt = filter(mat, mat[,3] == "1")
+
+px11 <- px1[1:10]
+px22 <- px2[1:10]
+
+
+pgrid1 <- expand.grid(px11=px11, px22=px22)
+pgrid1$prob <- prob1[1:10]
+matrix_val1 <- matrix(pgrid1$prob, 
+                     length(px11), 
+                     length(px22))
+contour(px11, px22, matrix_val1, levels=1, labels="", xlab="", ylab="", main=
+          "Some Picture", lwd=2, axes=FALSE)
+          
+library(plotly)       
+fig1 <- plot_ly(
+px1,px2,matrix_val1,type = "contour")
+          
+          
+          
+library(plotly)
+fig <- plot_ly(
+  x = c(-9, -6, -5, -3, -1), 
+  y = c(0, 1, 4, 5, 7), 
+  z = matrix(c(10, 10.625, 12.5, 15.625, 20, 5.625, 6.25, 8.125, 11.25, 15.625, 2.5, 3.125, 5, 8.125, 12.5, 0.625, 1.25, 3.125,
+        6.25, 10.625, 0, 0.625, 2.5, 5.625, 10), nrow = 5, ncol = 5), 
+  type = "contour" 
+)
+
+fig
+
+#plot when prob1 = 1
+
+prob15 <- as.matrix(prob1,length(px1), length(px2))
+par(mar=rep(2,4))
+contour(px1, px2, prob15, levels=0.5, labels="", xlab="", ylab="", main=
+        "15-nearest neighbour", axes=FALSE)
+```
+##example
+
+x1 <- 1:200
+x2 <- 50:250
+
+cgrid <- expand.grid(x1=x1, x2=x2)
+# our "prediction" colours the bottom left quadrant
+cgrid$prob <- 1
+cgrid[cgrid$x1 < 100 & cgrid$x2 < 170, c("prob")] <- 0
+
+matrix_val <- matrix(cgrid$prob, 
+                     length(x1), 
+                     length(x2))
+
+contour(x1, x2, matrix_val, levels=0.5, labels="", xlab="", ylab="", main=
+          "Some Picture", lwd=2, axes=FALSE)
+gd <- expand.grid(x=x1, y=x2)
+points(gd, pch=".", cex=1.2, col=ifelse(prob==1, "coral", "cornflowerblue"))
+box()
+
+##9.	Knock their socks off!  Find one other useful inference from the data that you feel Budweiser may be able to find value in.  You must convince them why it is important and back up your conviction with appropriate statistical evidence. 
+```{r}
+##market share, beers by breweries
+freq_table=table(hello_merge$Name.x)
+plot(freq_table,main = "Breweries by competitors",xlab = "Names", ylab = "# of Breweries",ylim=c(0,50),cex.axis = 1, las=2)
+#top three
+hello_market <- hello_merge %>% group_by(Name.x)%>%tally(sort = TRUE)
+hello_market
 
 ```
-9.	Knock their socks off!  Find one other useful inference from the data that you feel Budweiser may be able to find value in.  You must convince them why it is important and back up your conviction with appropriate statistical evidence. 
-
-#market share  competitor breweries
