@@ -1,0 +1,51 @@
+
+#1. the top three factors that contribute to turnover
+```{r}
+library(dplyr)
+df_hr=read.csv("CaseStudy2_data.csv")
+dim(df_hr)
+head(df_hr)
+```
+
+# check the plausible factors related to attrition ; monthly income, job role, overtime, travel
+```{r}
+ggplot(df_hr, aes(x=JobRole, fill=Attrition)) + geom_bar(position = "fill")
+ggplot(df_hr, aes(x=OverTime, fill=Attrition)) + geom_bar(position = "fill")
+ggplot(df_hr, aes(x=BusinessTravel, fill=Attrition)) + geom_bar(position = "fill")
+
+
+ggplot(df_hr, aes(x=MonthlyIncome, fill=Attrition)) + geom_bar(position = "fill")
+### Jobrole, overtime and business travel gives good idea but monthly income doesn't cause too many categories. I want to check one thing before re-define income level.
+```
+# median income per jobrole
+```{r}
+hello1 <- df_hr %>% group_by(JobRole) %>% summarize(meanIncome = mean(MonthlyIncome), count = n()) %>% arrange(meanIncome)
+print(hello1)
+barplot(hello1$meanIncome, names.arg = hello1$JobRole)
+## this gives good idea that the income is highly related with job role. And there are three levels of income here. under 50k, 50k~100k, over 100k. 
+```
+### re-define variables like MonthlyIncome,Age, DistanceFromHome, Hourly rate, MonthlyRate, etc
+
+
+### re-define categorical variables like BusinessTravel,Department, EducationField, Gender,JobRole,MaritalStatus,OverTime, etc
+
+
+### rescale
+```{r}
+df_hr_rescale <- df_hr %>%
+	mutate_if(is.numeric, list(~as.numeric(scale(.))))
+head(df_hr_rescale)
+# exclude ID,EmployeeNumber, needed
+#it will be better to use re-define df 
+```
+
+
+#2. interesting trends and observations from your analysis
+# there will be intended highly turnover rate position.
+
+#3. predict salary
+#any model suggestion?
+
+#4. predict attrition
+#GLM
+
