@@ -1,13 +1,14 @@
 
-#1. the top three factors that contribute to turnover
+1. the top three factors that contribute to turnover
 ```{r}
 library(dplyr)
 df_hr=read.csv("CaseStudy2_data.csv")
 dim(df_hr)
 head(df_hr)
 ```
+I guess top 3 is JobRole, MonthlyIncome, OverTime. Let's check it.
 
-# check the plausible factors related to attrition ; monthly income, job role, overtime, travel
+check the plausible factors related to attrition ; monthly income, job role, overtime, travel
 ```{r}
 ggplot(df_hr, aes(x=JobRole, fill=Attrition)) + geom_bar(position = "fill")
 ggplot(df_hr, aes(x=OverTime, fill=Attrition)) + geom_bar(position = "fill")
@@ -15,37 +16,251 @@ ggplot(df_hr, aes(x=BusinessTravel, fill=Attrition)) + geom_bar(position = "fill
 
 
 ggplot(df_hr, aes(x=MonthlyIncome, fill=Attrition)) + geom_bar(position = "fill")
-### Jobrole, overtime and business travel gives good idea but monthly income doesn't cause too many categories. I want to check one thing before re-define income level.
+
 ```
-# median income per jobrole
+Jobrole, overtime and business travel gives good idea but monthly income doesn't cause too many categories. I want to check one thing before re-define income level.
+BTW, These factors are also related to the Attrition. interesting.
+(MaritalStatus, JobSatisfaction, JobInvolvement, JobLevel,EnvironmentSatisfaction,Education,Age)
+
+median income per jobrole
 ```{r}
 hello1 <- df_hr %>% group_by(JobRole) %>% summarize(meanIncome = mean(MonthlyIncome), count = n()) %>% arrange(meanIncome)
 print(hello1)
 barplot(hello1$meanIncome, names.arg = hello1$JobRole)
-## this gives good idea that the income is highly related with job role. And there are three levels of income here. under 50k, 50k~100k, over 100k. 
 ```
-### re-define variables like MonthlyIncome,Age, DistanceFromHome, Hourly rate, MonthlyRate, etc
-
-
-### re-define categorical variables like BusinessTravel,Department, EducationField, Gender,JobRole,MaritalStatus,OverTime, etc
-
-
-### rescale
+this gives good idea that the income is highly related with job role. And there are three levels of income here. under 50k, 50k~100k, over 100k.I will recast montlhyincome for only attrition prediction not salary prediction. Or how about other income?
 ```{r}
-df_hr_rescale <- df_hr %>%
-	mutate_if(is.numeric, list(~as.numeric(scale(.))))
-head(df_hr_rescale)
-# exclude ID,EmployeeNumber, needed
-#it will be better to use re-define df 
+hello2 <- df_hr %>% group_by(JobRole) %>% summarize(meanHourlyRate = mean(HourlyRate), count = n()) %>% arrange(meanHourlyRate)
+print(hello2)
+barplot(hello2$meanHourlyRate, names.arg = hello2$JobRole)
+```
+hmm no diffrence? how about MonthlyRate?
+```{r}
+hello3 <- df_hr %>% group_by(JobRole) %>% summarize(meanMonthlyRate = mean(MonthlyRate), count = n()) %>% arrange(meanMonthlyRate)
+print(hello3)
+barplot(hello3$meanMonthlyRate, names.arg = hello2$JobRole)
+```
+interesting...no big difference. what is difference bwtween monthlyrate and monthlyincome? check correlation
+```{r}
+plot(df_hr$MonthlyRate,df_hr$MonthlyIncome)
+plot(df_hr$DailyRate,df_hr$MonthlyIncome)
+plot(df_hr$MonthlyRate,df_hr$DailyRate)
+```
+damm, it is totally different. Ok, I will redefine income level for attrition prediction only. But I want to compare before/after redefine. let's start without redefine.
+re-define categorical variables like BusinessTravel,Department, EducationField, Gender,JobRole,MaritalStatus,OverTime, etc
+Gender first! cause only two types for now.
+
+Male is 1 
+```{r}
+library("stringr")
+df_Gender <- 1*str_detect(df_hr$Gender, "Male")
+df_cv=df_hr
+df_cv$Gender<-df_Gender
+head(df_cv)
+```
+BusinessTravel
+Travel_rarely:0
+Travel_Frequently:1
+Non-Travel:2
+```{r}
+df_BusinessTravel = ifelse(str_detect(df_hr$BusinessTravel,"Travel_Rarely")==TRUE,"0",ifelse(str_detect(df_hr$BusinessTravel,"Travel_Frequently")==TRUE,"1","2"))
+df_cv$BusinessTravel<-df_BusinessTravel
+head(df_cv)
+```
+attrition
+No is 1
+```{r}
+df_Attrition <- 1*str_detect(df_hr$Attrition, "No")
+df_cv$Attrition<-df_Attrition
+head(df_cv)
+```
+Department
+```{r}
+ggplot(df_hr, aes(x=Department, fill=Attrition)) + geom_bar(position = "fill")
+```
+
+Sales 0
+Research & Development	1
+Human Resources 2
+```{r}
+
+df_Department = ifelse(str_detect(df_hr$Department,"Sales")==TRUE,"0",ifelse(str_detect(df_hr$Department,"Research & Development")==TRUE,"1","2"))
+df_cv$Department<-df_Department
+
+head(df_cv)
+```
+JobRole
+```{r}
+ggplot(df_hr, aes(x=JobRole, fill=Attrition)) + geom_bar(position = "fill")
+```
+Healthcare Representative 1
+Human Resources 2
+Laboratory Technician 3
+Manager 4
+Manufacturing Director 5
+Research Director 6
+Research Scientist 7
+Sales Executive 8
+Sales Representative 9
+```{r}
+df_cv$JobRole<-as.integer(factor(df_hr$JobRole, levels = c("Healthcare Representative", "Human Resources","Laboratory Technician","Manager","Manufacturing Director","Research Director","Research Scientist","Sales Executive","Sales Representative")))
+head(df_cv)
 ```
 
 
-#2. interesting trends and observations from your analysis
-# there will be intended highly turnover rate position.
 
-#3. predict salary
-#any model suggestion?
 
-#4. predict attrition
-#GLM
+MaritalStatus
+```{r}
+ggplot(df_hr, aes(x=MaritalStatus, fill=Attrition)) + geom_bar(position = "fill")
+```
+```{r}
+df_cv$MaritalStatus<-as.integer(factor(df_hr$MaritalStatus, levels = c("Divorced", "Married","Single")))
+head(df_cv)
+```
+Over18
+```{r}
+ggplot(df_hr, aes(x=Over18, fill=Attrition)) + geom_bar(position = "fill")
+```
+Yes 1
+No 2
+```{r}
+df_cv$Over18<-as.integer(factor(df_hr$Over18, levels = c("Y", "N")))
+head(df_cv)
+```
+OverTime
+Yes 1
+No 2
+```{r}
+df_cv$OverTime<-as.integer(factor(df_hr$OverTime, levels = c("Yes", "No")))
+head(df_cv)
+```
+
+EducationField
+```{r}
+ggplot(df_hr, aes(x=EducationField, fill=Attrition)) + geom_bar(position = "fill")
+```
+Life Sciences 1
+Medical 2
+Marketing 3
+Technical Degree 4
+Human Resources 5
+Other 6
+```{r}
+df_cv$EducationField<-as.integer(factor(df_hr$EducationField, levels = c("Life Sciences", "Medical","Marketing","Technical Degree","Human Resources","Other")))
+head(df_cv)
+```
+
+correlation map for attrition
+```{r}
+library(GGally)
+# Convert data to numeric
+corr <- data.frame(lapply(df_cv, as.integer))
+corr$new <- corr$Attrition
+# Plot the graph
+plot_attrition=ggcorr(corr,
+    method = c("pairwise", "spearman"),
+    nbreaks = 6,
+    hjust = 0.8,
+    label = TRUE,
+    label_size = 2,
+    label_round = 4,
+    color = "grey50")
+plot_attrition
+```
+overtime 0.27, #1
+
+monthly income, .1995
+
+it will be better to re-scale the monthly income and check.
+```{r}
+for (x in 1:nrow(df_hr)) {
+  if(df_hr$MonthlyIncome[x]<1000){df_MonthlyIncome[x] = 1}
+  else if(df_hr$MonthlyIncome[x]>=1000 & df_hr$MonthlyIncome[x]<2000){df_MonthlyIncome[x] = 2}
+  else if(df_hr$MonthlyIncome[x]>=2000 & df_hr$MonthlyIncome[x]<3000){df_MonthlyIncome[x] = 3}
+  else if(df_hr$MonthlyIncome[x]>=3000 & df_hr$MonthlyIncome[x]<4000){df_MonthlyIncome[x] = 4}
+  else if(df_hr$MonthlyIncome[x]>=4000 & df_hr$MonthlyIncome[x]<5000){df_MonthlyIncome[x] = 5}
+  else if(df_hr$MonthlyIncome[x]>=5000 & df_hr$MonthlyIncome[x]<6000){df_MonthlyIncome[x] = 6}
+  else if(df_hr$MonthlyIncome[x]>=6000 & df_hr$MonthlyIncome[x]<7000){df_MonthlyIncome[x] = 7}
+  else if(df_hr$MonthlyIncome[x]>=7000 & df_hr$MonthlyIncome[x]<8000){df_MonthlyIncome[x] = 8}
+  else if(df_hr$MonthlyIncome[x]>=8000 & df_hr$MonthlyIncome[x]<9000){df_MonthlyIncome[x] = 9}
+  else if(df_hr$MonthlyIncome[x]>=9000 & df_hr$MonthlyIncome[x]<10000){df_MonthlyIncome[x] = 10}
+  else if(df_hr$MonthlyIncome[x]>=10000 & df_hr$MonthlyIncome[x]<11000){df_MonthlyIncome[x] = 11}
+  else if(df_hr$MonthlyIncome[x]>=11000 & df_hr$MonthlyIncome[x]<12000){df_MonthlyIncome[x] = 12}
+  else if(df_hr$MonthlyIncome[x]>=12000 & df_hr$MonthlyIncome[x]<13000){df_MonthlyIncome[x] = 13}
+  else if(df_hr$MonthlyIncome[x]>=13000 & df_hr$MonthlyIncome[x]<14000){df_MonthlyIncome[x] = 14}
+  else if(df_hr$MonthlyIncome[x]>=14000 & df_hr$MonthlyIncome[x]<15000){df_MonthlyIncome[x] = 15}
+  else if(df_hr$MonthlyIncome[x]>=15000 & df_hr$MonthlyIncome[x]<16000){df_MonthlyIncome[x] = 16}
+  else if(df_hr$MonthlyIncome[x]>=16000 & df_hr$MonthlyIncome[x]<17000){df_MonthlyIncome[x] = 17}
+  else if(df_hr$MonthlyIncome[x]>=17000 & df_hr$MonthlyIncome[x]<18000){df_MonthlyIncome[x] = 18}
+  else if(df_hr$MonthlyIncome[x]>=18000 & df_hr$MonthlyIncome[x]<19000){df_MonthlyIncome[x] = 19}
+  else if(df_hr$MonthlyIncome[x]>=19000 & df_hr$MonthlyIncome[x]<20000){df_MonthlyIncome[x] = 20}
+else {df_MonthlyIncome[x] = 8}
+
+}
+df_hr$MonthlyIncomeLevel <- df_MonthlyIncome
+ggplot(df_hr, aes(x=MonthlyIncomeLevel, fill=Attrition)) + geom_bar(position = "fill")
+```
+let's check correlation again
+```{r}
+df_re<-df_cv
+df_re$MonthlyIncome <- df_MonthlyIncome
+# Convert data to numeric
+corr <- data.frame(lapply(df_re, as.integer))
+corr$new <- corr$Attrition
+# Plot the graph
+plot_attrition=ggcorr(corr,
+    method = c("pairwise", "spearman"),
+    nbreaks = 6,
+    hjust = 0.8,
+    label = TRUE,
+    label_size = 2,
+    label_round = 4,
+    color = "grey50")
+plot_attrition
+```
+ohh .1992. interesting. #4
+marrital status, .198 #5
+total working year, .1996 #3
+stock option level, .201 #2
+
+correlation map for monthly income
+```{r setup, include=FALSE}
+library(GGally)
+# Convert data to numeric
+corr <- data.frame(lapply(df_cv, as.integer))
+corr$new <- corr$MonthlyIncome
+# Plot the graph
+ggcorr(corr,
+    method = c("pairwise", "spearman"),
+    nbreaks = 6,
+    hjust = 0.8,
+    label = TRUE,
+    label_size = 3,
+    color = "grey50")
+```
+joblevel .9
+total working year .7
+years at company .5
+
+
+2. interesting trends and observations from your analysis
+there will be intended highly turnover rate position.
+salary always number 1 factor of retrition so it will be the last choice to reduce retrition. 
+hire more people or promotion and productivity increasing are good way to go
+
+3. predict salary
+any model suggestion?
+
+4. predict attrition
+GLM
+
+rescale
+```{r}
+df_re <- df_cv %>%
+	mutate_if(is.numeric, list(~as.numeric(scale(.))))
+head(df_re)
+```
+exclude ID,EmployeeNumber will be bettter.
+
 
