@@ -28,25 +28,9 @@ hello1 <- df_hr %>% group_by(JobRole) %>% summarize(meanIncome = mean(MonthlyInc
 print(hello1)
 barplot(hello1$meanIncome, names.arg = hello1$JobRole)
 ```
-this gives good idea that the income is highly related with job role. And there are three levels of income here. under 50k, 50k~100k, over 100k.I will recast montlhyincome for only attrition prediction not salary prediction. Or how about other income?
-```{r}
-hello2 <- df_hr %>% group_by(JobRole) %>% summarize(meanHourlyRate = mean(HourlyRate), count = n()) %>% arrange(meanHourlyRate)
-print(hello2)
-barplot(hello2$meanHourlyRate, names.arg = hello2$JobRole)
-```
-hmm no diffrence? how about MonthlyRate?
-```{r}
-hello3 <- df_hr %>% group_by(JobRole) %>% summarize(meanMonthlyRate = mean(MonthlyRate), count = n()) %>% arrange(meanMonthlyRate)
-print(hello3)
-barplot(hello3$meanMonthlyRate, names.arg = hello2$JobRole)
-```
-interesting...no big difference. what is difference bwtween monthlyrate and monthlyincome? check correlation
-```{r}
-plot(df_hr$MonthlyRate,df_hr$MonthlyIncome)
-plot(df_hr$DailyRate,df_hr$MonthlyIncome)
-plot(df_hr$MonthlyRate,df_hr$DailyRate)
-```
-damm, it is totally different. Ok, I will redefine income level for attrition prediction only. But I want to compare before/after redefine. let's start without redefine.
+this gives good idea that the income is highly related with job role. And there are three levels of income here. under 50k, 50k~100k, over 100k.I will recast montlhyincome for only attrition prediction not salary prediction.
+
+
 re-define categorical variables like BusinessTravel,Department, EducationField, Gender,JobRole,MaritalStatus,OverTime, etc
 Gender first! cause only two types for now.
 
@@ -74,10 +58,7 @@ df_Attrition <- 1*str_detect(df_hr$Attrition, "No")
 df_cv$Attrition<-df_Attrition
 head(df_cv)
 ```
-Department
-```{r}
-ggplot(df_hr, aes(x=Department, fill=Attrition)) + geom_bar(position = "fill")
-```
+
 
 Sales 0
 Research & Development	1
@@ -89,10 +70,7 @@ df_cv$Department<-df_Department
 
 head(df_cv)
 ```
-JobRole
-```{r}
-ggplot(df_hr, aes(x=JobRole, fill=Attrition)) + geom_bar(position = "fill")
-```
+
 Healthcare Representative 1
 Human Resources 2
 Laboratory Technician 3
@@ -107,21 +85,11 @@ df_cv$JobRole<-as.integer(factor(df_hr$JobRole, levels = c("Healthcare Represent
 head(df_cv)
 ```
 
-
-
-
-MaritalStatus
-```{r}
-ggplot(df_hr, aes(x=MaritalStatus, fill=Attrition)) + geom_bar(position = "fill")
-```
 ```{r}
 df_cv$MaritalStatus<-as.integer(factor(df_hr$MaritalStatus, levels = c("Divorced", "Married","Single")))
 head(df_cv)
 ```
 Over18
-```{r}
-ggplot(df_hr, aes(x=Over18, fill=Attrition)) + geom_bar(position = "fill")
-```
 Yes 1
 No 2
 ```{r}
@@ -198,14 +166,15 @@ for (x in 1:nrow(df_hr)) {
 else {df_MonthlyIncome[x] = 8}
 
 }
-df_hr$MonthlyIncomeLevel <- df_MonthlyIncome
-ggplot(df_hr, aes(x=MonthlyIncomeLevel, fill=Attrition)) + geom_bar(position = "fill")
+df_re=df_hr
+df_re$MonthlyIncomeLevel <- df_MonthlyIncome
+ggplot(df_re, aes(x=MonthlyIncomeLevel, fill=Attrition)) + geom_bar(position = "fill")
 ```
 let's check correlation again
 ```{r}
-df_re<-df_cv
-df_re$MonthlyIncome <- df_MonthlyIncome
 # Convert data to numeric
+df_re=df_cv
+df_re$MonthlyIncomeLevel <- df_MonthlyIncome
 corr <- data.frame(lapply(df_re, as.integer))
 corr$new <- corr$Attrition
 # Plot the graph
@@ -223,44 +192,145 @@ ohh .1992. interesting. #4
 marrital status, .198 #5
 total working year, .1996 #3
 stock option level, .201 #2
+overtime .27
+
+
+
+2. interesting trends and observations from your analysis
+
+
+
+there will be intended highly turnover rate position.
+
+salary always number 1 factor of retrition so it will be the last choice to reduce retrition. 
+hire more people or promotion and productivity increasing are good way to go
+
+overtime 0.27, #1
+marrital status, .198 #5
+total working year, .1996 #3
+stock option level, .201 #2
+monthly income .1992. interesting. #4
+will be good
+
 
 correlation map for monthly income
 ```{r setup, include=FALSE}
 library(GGally)
 # Convert data to numeric
 corr <- data.frame(lapply(df_cv, as.integer))
+#make easier to see
 corr$new <- corr$MonthlyIncome
 # Plot the graph
-ggcorr(corr,
+income=ggcorr(corr,
     method = c("pairwise", "spearman"),
     nbreaks = 6,
     hjust = 0.8,
     label = TRUE,
     label_size = 3,
     color = "grey50")
+income
 ```
 joblevel .9
 total working year .7
 years at company .5
 
+correlation network
+```{r}
+library(qgraph)
+#use cor function to create a correlation matrix with milan.mort dataset
+#and put into cormat variable
+###################################################
+corr1 <- data.frame(lapply(df_cv, as.integer))
+cormat=cor(corr1)  #correlation matrix generated
+###################################################
+###################################################
+#now plot a graph of the correlation matrix
+###################################################
+#qgraph(cormat, shape="circle", posCol="darkgreen", negCol="darkred", layout="groups", vsize=10)
+qgraph(cormat, shape="circle", posCol="darkgreen", negCol="darkred", layout="spring", vsize=5)
+head(df_cv)
+```
+lets make rshiny with this
 
-2. interesting trends and observations from your analysis
-there will be intended highly turnover rate position.
-salary always number 1 factor of retrition so it will be the last choice to reduce retrition. 
-hire more people or promotion and productivity increasing are good way to go
 
-3. predict salary
-any model suggestion?
-
-4. predict attrition
+3. predict attrition
 GLM
 
 rescale
 ```{r}
-df_re <- df_cv %>%
+df_res <- df_cv %>%
 	mutate_if(is.numeric, list(~as.numeric(scale(.))))
-head(df_re)
+head(df_res)
+dim(df_res)
 ```
-exclude ID,EmployeeNumber will be bettter.
+exclude ID,EmployeeNumber will be bettter. not needed.
+
+70/30
+```{r}
+#70/30 training/
+# Loop for many k and the average of many training / test partition
+hello_scale=df_cv
+
+set.seed(300)
+iterations = 1
+numks = 1
+splitPerc = .70
+
+masterAcc = matrix(nrow = iterations, ncol = numks)
 
 
+for(j in 1:iterations)
+{
+  trainIndices = sample(1:dim(hello_scale)[1],round(splitPerc * dim(hello_scale)[1]))
+  train = hello_scale[trainIndices,]
+  test = hello_scale[-trainIndices,]
+  for(i in 1:numks)
+  {formula = Attrition ~ Age + BusinessTravel + Department + Education + JobLevel + JobRole + MonthlyIncome + NumCompaniesWorked  + OverTime  + StockOptionLevel + TotalWorkingYears + YearsAtCompany + StockOptionLevel + YearsWithCurrManager + YearsInCurrentRole
+classifications =  glm(formula, data = train, family = binomial())
+  }
+  
+}
+summary(classifications)
+predicted <- predict(classifications, test, type = 'response')
+```
+
+
+accuracy
+```{r}
+
+# confusion matrix
+table_mat <- table(test$Attrition, predicted>0.5)
+table_mat
+TP = table_mat[1,1]
+FP = table_mat[1,2]
+FN = table_mat[2,1]
+TN = table_mat[2,2]
+accuracy = (TN+TP)/(TN+TP+FP+TP)
+accuracy
+sensitivity = TP/(TP+FN)
+sensitivity
+specificity = TN/(TN+FP)
+specificity
+```
+confusion matrix in caret threshold default is .5
+https://www.rdocumentation.org/packages/InformationValue/versions/1.2.3/topics/confusionMatrix
+rank-deficient fit. job level and monthly income has .9 correlation and I guess this make trouble. change formula
+p-value
+
+
+
+4. predict salary
+let's change model to linear mod
+```{r}
+library("caret")
+linearMod <- lm(train$MonthlyIncome ~ JobLevel + TotalWorkingYears + YearsAtCompany, data=train)
+# 
+summary(linearMod)
+# now use it to predict the salary
+
+
+predict = predict(linearMod, test, inverval="predict")
+
+
+RMSE(test$MonthlyIncome,predict)
+```
