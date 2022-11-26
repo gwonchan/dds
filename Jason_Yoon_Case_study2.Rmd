@@ -10,6 +10,7 @@ I guess top 3 is JobRole, MonthlyIncome, OverTime. Let's check it.
 
 check the plausible factors related to attrition ; monthly income, job role, overtime, travel
 ```{r}
+library("ggplot2")
 ggplot(df_hr, aes(x=JobRole, fill=Attrition)) + geom_bar(position = "fill")
 ggplot(df_hr, aes(x=OverTime, fill=Attrition)) + geom_bar(position = "fill")
 ggplot(df_hr, aes(x=BusinessTravel, fill=Attrition)) + geom_bar(position = "fill")
@@ -22,126 +23,9 @@ Jobrole, overtime and business travel gives good idea but monthly income doesn't
 BTW, These factors are also related to the Attrition. interesting.
 (MaritalStatus, JobSatisfaction, JobInvolvement, JobLevel,EnvironmentSatisfaction,Education,Age)
 
-median income per jobrole
-```{r}
-hello1 <- df_hr %>% group_by(JobRole) %>% summarize(meanIncome = mean(MonthlyIncome), count = n()) %>% arrange(meanIncome)
-print(hello1)
-barplot(hello1$meanIncome, names.arg = hello1$JobRole)
-```
-this gives good idea that the income is highly related with job role. And there are three levels of income here. under 50k, 50k~100k, over 100k.I will recast montlhyincome for only attrition prediction not salary prediction.
-
-
-re-define categorical variables like BusinessTravel,Department, EducationField, Gender,JobRole,MaritalStatus,OverTime, etc
-Gender first! cause only two types for now.
-
-Male is 1 
-```{r}
-library("stringr")
-df_Gender <- 1*str_detect(df_hr$Gender, "Male")
-df_cv=df_hr
-df_cv$Gender<-df_Gender
-head(df_cv)
-```
-BusinessTravel
-Travel_rarely:0
-Travel_Frequently:1
-Non-Travel:2
-```{r}
-df_BusinessTravel = ifelse(str_detect(df_hr$BusinessTravel,"Travel_Rarely")==TRUE,"0",ifelse(str_detect(df_hr$BusinessTravel,"Travel_Frequently")==TRUE,"1","2"))
-df_cv$BusinessTravel<-df_BusinessTravel
-head(df_cv)
-```
-attrition
-No is 1
-```{r}
-df_Attrition <- 1*str_detect(df_hr$Attrition, "No")
-df_cv$Attrition<-df_Attrition
-head(df_cv)
-```
-
-
-Sales 0
-Research & Development	1
-Human Resources 2
-```{r}
-
-df_Department = ifelse(str_detect(df_hr$Department,"Sales")==TRUE,"0",ifelse(str_detect(df_hr$Department,"Research & Development")==TRUE,"1","2"))
-df_cv$Department<-df_Department
-
-head(df_cv)
-```
-
-Healthcare Representative 1
-Human Resources 2
-Laboratory Technician 3
-Manager 4
-Manufacturing Director 5
-Research Director 6
-Research Scientist 7
-Sales Executive 8
-Sales Representative 9
-```{r}
-df_cv$JobRole<-as.integer(factor(df_hr$JobRole, levels = c("Healthcare Representative", "Human Resources","Laboratory Technician","Manager","Manufacturing Director","Research Director","Research Scientist","Sales Executive","Sales Representative")))
-head(df_cv)
-```
-
-```{r}
-df_cv$MaritalStatus<-as.integer(factor(df_hr$MaritalStatus, levels = c("Divorced", "Married","Single")))
-head(df_cv)
-```
-Over18
-Yes 1
-No 2
-```{r}
-df_cv$Over18<-as.integer(factor(df_hr$Over18, levels = c("Y", "N")))
-head(df_cv)
-```
-OverTime
-Yes 1
-No 2
-```{r}
-df_cv$OverTime<-as.integer(factor(df_hr$OverTime, levels = c("Yes", "No")))
-head(df_cv)
-```
-
-EducationField
-```{r}
-ggplot(df_hr, aes(x=EducationField, fill=Attrition)) + geom_bar(position = "fill")
-```
-Life Sciences 1
-Medical 2
-Marketing 3
-Technical Degree 4
-Human Resources 5
-Other 6
-```{r}
-df_cv$EducationField<-as.integer(factor(df_hr$EducationField, levels = c("Life Sciences", "Medical","Marketing","Technical Degree","Human Resources","Other")))
-head(df_cv)
-```
-
-correlation map for attrition
-```{r}
-library(GGally)
-# Convert data to numeric
-corr <- data.frame(lapply(df_cv, as.integer))
-corr$new <- corr$Attrition
-# Plot the graph
-plot_attrition=ggcorr(corr,
-    method = c("pairwise", "spearman"),
-    nbreaks = 6,
-    hjust = 0.8,
-    label = TRUE,
-    label_size = 2,
-    label_round = 4,
-    color = "grey50")
-plot_attrition
-```
-overtime 0.27, #1
-
-monthly income, .1995
-
 it will be better to re-scale the monthly income and check.
 ```{r}
+df_MonthlyIncome = 0
 for (x in 1:nrow(df_hr)) {
   if(df_hr$MonthlyIncome[x]<1000){df_MonthlyIncome[x] = 1}
   else if(df_hr$MonthlyIncome[x]>=1000 & df_hr$MonthlyIncome[x]<2000){df_MonthlyIncome[x] = 2}
@@ -164,19 +48,101 @@ for (x in 1:nrow(df_hr)) {
   else if(df_hr$MonthlyIncome[x]>=18000 & df_hr$MonthlyIncome[x]<19000){df_MonthlyIncome[x] = 19}
   else if(df_hr$MonthlyIncome[x]>=19000 & df_hr$MonthlyIncome[x]<20000){df_MonthlyIncome[x] = 20}
 else {df_MonthlyIncome[x] = 8}
-
 }
 df_re=df_hr
 df_re$MonthlyIncomeLevel <- df_MonthlyIncome
 ggplot(df_re, aes(x=MonthlyIncomeLevel, fill=Attrition)) + geom_bar(position = "fill")
+
 ```
-let's check correlation again
 ```{r}
+hello1 <- df_hr %>% group_by(JobRole) %>% summarize(meanIncome = mean(MonthlyIncome), count = n()) %>% arrange(meanIncome)
+print(hello1)
+barplot(hello1$meanIncome, names.arg = hello1$JobRole)
+```
+this gives good idea that the income is highly related with job role. And there are three levels of income here. under 50k, 50k~100k, over 100k.I will recast montlhyincome for only attrition prediction not salary prediction.
+
+
+re-define categorical variables like BusinessTravel,Department, EducationField, Gender,JobRole,MaritalStatus,OverTime, etc
+Gender first! cause only two types for now.
+
+Male is 1 
+```{r}
+library("stringr")
+df_Gender <- 1*str_detect(df_hr$Gender, "Male")
+df_cv=df_hr
+df_cv$Gender<-df_Gender
+```
+BusinessTravel
+Travel_rarely:0
+Travel_Frequently:1
+Non-Travel:2
+```{r}
+df_BusinessTravel = ifelse(str_detect(df_hr$BusinessTravel,"Travel_Rarely")==TRUE,"0",ifelse(str_detect(df_hr$BusinessTravel,"Travel_Frequently")==TRUE,"1","2"))
+df_cv$BusinessTravel<-df_BusinessTravel
+```
+attrition
+No is 1
+```{r}
+df_Attrition <- 1*str_detect(df_hr$Attrition, "No")
+df_cv$Attrition<-df_Attrition
+```
+
+
+Sales 0
+Research & Development	1
+Human Resources 2
+```{r}
+
+df_Department = ifelse(str_detect(df_hr$Department,"Sales")==TRUE,"0",ifelse(str_detect(df_hr$Department,"Research & Development")==TRUE,"1","2"))
+df_cv$Department<-df_Department
+```
+
+Healthcare Representative 1
+Human Resources 2
+Laboratory Technician 3
+Manager 4
+Manufacturing Director 5
+Research Director 6
+Research Scientist 7
+Sales Executive 8
+Sales Representative 9
+```{r}
+df_cv$JobRole<-as.integer(factor(df_hr$JobRole, levels = c("Healthcare Representative", "Human Resources","Laboratory Technician","Manager","Manufacturing Director","Research Director","Research Scientist","Sales Executive","Sales Representative")))
+```
+
+```{r}
+df_cv$MaritalStatus<-as.integer(factor(df_hr$MaritalStatus, levels = c("Divorced", "Married","Single")))
+```
+Over18
+Yes 1
+No 2
+```{r}
+df_cv$Over18<-as.integer(factor(df_hr$Over18, levels = c("Y", "N")))
+```
+OverTime
+Yes 1
+No 2
+```{r}
+df_cv$OverTime<-as.integer(factor(df_hr$OverTime, levels = c("Yes", "No")))
+```
+
+EducationField
+Life Sciences 1
+Medical 2
+Marketing 3
+Technical Degree 4
+Human Resources 5
+Other 6
+```{r}
+df_cv$EducationField<-as.integer(factor(df_hr$EducationField, levels = c("Life Sciences", "Medical","Marketing","Technical Degree","Human Resources","Other")))
+```
+
+correlation map for attrition
+```{r message=FALSE, warning=FALSE}
+library(GGally)
 # Convert data to numeric
-df_re=df_cv
-df_re$MonthlyIncomeLevel <- df_MonthlyIncome
-corr <- data.frame(lapply(df_re, as.integer))
-corr$new <- corr$Attrition
+corr <- data.frame(lapply(df_cv, as.integer))
+corr$Attri <- corr$Attrition
 # Plot the graph
 plot_attrition=ggcorr(corr,
     method = c("pairwise", "spearman"),
@@ -187,12 +153,15 @@ plot_attrition=ggcorr(corr,
     label_round = 4,
     color = "grey50")
 plot_attrition
+head(df_cv)
 ```
-ohh .1992. interesting. #4
+overtime 0.27, #1
+
+monthly income, .1995 #4
 marrital status, .198 #5
 total working year, .1996 #3
 stock option level, .201 #2
-overtime .27
+
 
 
 
@@ -248,24 +217,55 @@ cormat=cor(corr1)  #correlation matrix generated
 ###################################################
 #qgraph(cormat, shape="circle", posCol="darkgreen", negCol="darkred", layout="groups", vsize=10)
 qgraph(cormat, shape="circle", posCol="darkgreen", negCol="darkred", layout="spring", vsize=5)
-head(df_cv)
 ```
 lets make rshiny with this
 
+```{r}
+#nodes
+cormat=cor(corr1)  #correlation matrix generated
+diag(cormat) <- 0
+cormat[upper.tri(cormat)] <- 0
+df_nodes <- list("name"=rownames(cormat),"group"=c(1:36),"size"=c(1:36))
+df_nodes <- as.data.frame(df_nodes)
+
+#links
+rownames(cormat) <- c(0:35)
+colnames(cormat) <- c(0:35)
+cormat <- cormat %>% replace(is.na(.), 0)
+cormat=abs(cormat*100)
+cormat=format(round(cormat))
+cormat <- cormat %>% replace(is.na(.), 0)
+df_pairs=as.data.frame(as.table(cormat))
+df_links=df_pairs
+names(df_links) <- c("source","target","Freq")
+df_links=df_links[order(df_links$Freq, decreasing = TRUE), ]
+df_links = df_links[1:60,]
+
+
+library(networkD3)
+
+forceNetwork(Links = df_links, Nodes = df_nodes, Source = "source",
+             Target = "target", Value = "Freq", NodeID = "name",
+             Group = "group", opacity = 0.4, fontSize = 30, zoom = T)
+```
+write.csv(df_nodes, file = "df_nodes.csv")
+write.csv(df_links, file = "df_links.csv")
+
+
 
 3. predict attrition
-GLM
 
-rescale
+
 ```{r}
-df_res <- df_cv %>%
-	mutate_if(is.numeric, list(~as.numeric(scale(.))))
-head(df_res)
-dim(df_res)
-```
-exclude ID,EmployeeNumber will be bettter. not needed.
+df_cv %>% ggplot(aes(x = MonthlyIncome, y = TotalWorkingYears, color=Attrition > 0)) + 
+geom_point() +
+stat_ellipse()
 
-70/30
+```
+Lots of outliers! 
+
+let's use GLM and do benchmark with NB
+
 ```{r}
 #70/30 training/
 # Loop for many k and the average of many training / test partition
@@ -275,8 +275,6 @@ set.seed(300)
 iterations = 1
 numks = 1
 splitPerc = .70
-
-masterAcc = matrix(nrow = iterations, ncol = numks)
 
 
 for(j in 1:iterations)
@@ -314,10 +312,12 @@ specificity
 ```
 confusion matrix in caret threshold default is .5
 https://www.rdocumentation.org/packages/InformationValue/versions/1.2.3/topics/confusionMatrix
-rank-deficient fit. job level and monthly income has .9 correlation and I guess this make trouble. change formula
-p-value
 
+Submit!
+```{r}
+pred_attr=read.csv("CaseStudy2CompSet No Attrition (1).csv")
 
+```
 
 4. predict salary
 let's change model to linear mod
@@ -333,4 +333,10 @@ predict = predict(linearMod, test, inverval="predict")
 
 
 RMSE(test$MonthlyIncome,predict)
+```
+
+submit!
+```{r}
+pred_salary=read.csv("CaseStudy2CompSet No Salary (2).xlsx")
+
 ```
